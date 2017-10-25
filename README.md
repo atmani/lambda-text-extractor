@@ -53,24 +53,54 @@ For our needs, we find that 512MB for `simple` and 1024MB for `ocr` is a good ba
 
 ### Non OCR Text Extraction
 
-The `simple` function expects an `event` with
+The `simple` function expects an `event` from S3. This has been modified from the original repo for a POC to handle S3 event instead of defined input.
+Will take only the first records from the record set of the event.
 
-- `document_uri`: A URI containing the document to extract text from, i.e., `s3://bucket/key.pdf`.
-- `temp_uri_prefix` (optional): A URI prefix where temporary files can be stored. Defaults to `<document_uri>-temp` if not set.
-- `text_uri` (optional): A URI where the extracted text will be stored, i.e., `s3://bucket/key.txt`. Defaults to `<document_uri>.txt` if not set.
-- `disable_ocr` (optional): Whether to disable OCR feature. Defaults to `False`.
 
-#### Example
 
-    aws lambda invoke --function-name textractor_simple --payload '{"document_uri": "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf", "temp_uri_prefix": "s3://bucket/", "text_uri": "s3://bucket/tracemonkey.txt"}' -
+#### Example of S3 event data
 
-    aws s3 cp s3://bucket/tracemonkey.txt -
+```
+{
+  "Records": [
+    {
+      "eventVersion": "2.0",
+      "eventSource": "aws:s3",
+      "awsRegion": "eu-west-1",
+      "eventTime": "2017-09-29T08:14:51.672Z",
+      "eventName": "ObjectCreated:Put",
+      "userIdentity": {
+        "principalId": "A3SZ589RTI4YAA"
+      },
+      "requestParameters": {
+        "sourceIPAddress": "148.252.215.30"
+      },
+      "responseElements": {
+        "x-amz-request-id": "1440A58694FF2039",
+        "x-amz-id-2": "hr/5Lo1c6HccAWh811klo8FzQij0CUN/9gxZ1gUWa4MHgCHqdzJcf6+9GWRnwDNJNkh0iYdtSLw="
+      },
+      "s3": {
+        "s3SchemaVersion": "1.0",
+        "configurationId": "46349781-848f-43a9-9c39-767007c466b9",
+        "bucket": {
+          "name": "bc-hackday",
+          "ownerIdentity": {
+            "principalId": "A3SZ589RTI4YAA"
+          },
+          "arn": "arn:aws:s3:::***${yourS3Bucket}***"
+        },
+        "object": {
+          "key": "input/***${yourFileName}***",
+          "size": 85947,
+          "eTag": "60eb37edcccb65cc854be8b2782e8ffe",
+          "sequencer": "0059CE00FB7A5EB5DA"
+        }
+      }
+    }
+  ]
+}
+```
 
-It automatically fallbacks to `ocr` function when:
-
-- file is a PDF (i.e., ends with `.pdf`),
-- text content is shorter than 32 characters, and
-- `disable_ocr` is `False`.
 
 ### OCR Text Extraction
 
