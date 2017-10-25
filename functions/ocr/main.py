@@ -24,7 +24,7 @@ from utils import get_subprocess_output
 LAMBDA_TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', os.path.dirname(os.path.abspath(__file__)))
 LAMBDA_FUNCTION_NAME = os.environ['LAMBDA_FUNCTION_NAME']
 BIN_DIR = os.path.join(LAMBDA_TASK_ROOT, 'bin')
-LIB_DIR = os.path.join(LAMBDA_TASK_ROOT, 'lib')
+LIB_DIR = LAMBDA_TASK_ROOT
 
 MERGE_SEARCHABLE_PDF_DURATION = float(os.environ.get('MERGE_SEARCHABLE_PDF_DURATION', 90))
 RETURN_RESULTS_DURATION = float(os.environ.get('RETURN_RESULTS_DURATION', 3.0))
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 def handle(event, context):
     global logger
-
+    print ("environment variable: " + os.environ['LD_LIBRARY_PATH'])
     document_uri = event['document_uri']
     temp_uri_prefix = event.get('temp_uri_prefix', event['document_uri'] + '-temp')
     text_uri = event.get('text_uri', document_uri + '.txt')
@@ -167,6 +167,7 @@ def pdf_to_text_with_ocr(document_path, event, context, create_searchable_pdf=Tr
     if page is not None:
         return pdf_to_text_with_ocr_single_page(document_path, event, context, create_searchable_pdf=create_searchable_pdf)
 
+    print('My lib dir = ' + os.path.join(LIB_DIR, 'pdftotext'))
     # This is more reliable than using PyPDF2
     pdfinfo_output = _get_subprocess_output([os.path.join(BIN_DIR, 'pdfinfo'), document_path], shell=False, env=dict(LD_LIBRARY_PATH=os.path.join(LIB_DIR, 'pdftotext')))
     pdfinfo_output = pdfinfo_output.decode('ascii', errors='ignore')

@@ -16,7 +16,7 @@ from uriutils import uri_read, uri_exists, uri_dump
 
 LAMBDA_TASK_ROOT = os.environ.get('LAMBDA_TASK_ROOT', os.path.dirname(os.path.abspath(__file__)))
 BIN_DIR = os.path.join(LAMBDA_TASK_ROOT, 'bin')
-LIB_DIR = os.path.join(LAMBDA_TASK_ROOT, 'lib')
+LIB_DIR = LAMBDA_TASK_ROOT
 
 TEXTRACTOR_OCR = os.environ['TEXTRACTOR_OCR']
 
@@ -35,9 +35,15 @@ logger = logging.getLogger(__name__)
 def handle(event, context):
     global logger
 
-    document_uri = event['document_uri']
-    temp_uri_prefix = event.get('temp_uri_prefix', event['document_uri'] + '-temp')
-    text_uri = event.get('text_uri', document_uri + '.txt')
+    bucket = 's3://' + event['Records'][0]['s3']['bucket']['name'];
+
+    document_uri = bucket + '/' + event['Records'][0]['s3']['object']['key']
+    document_uri = document_uri.replace('+', ' ')
+    splitted_file_name = document_uri.split('/')
+    file_name = splitted_file_name[len(splitted_file_name)-1]
+
+    temp_uri_prefix = bucket + '/temp/' + file_name + '-temp'
+    text_uri = bucket + '/output/' + file_name + '.txt'
     disable_ocr = event.get('disable_ocr', False)
 
     # AWS Lambda auto-retries errors for 3x. This should make it disable retrying...kinda. See https://stackoverflow.com/questions/32064038/aws-lambda-function-triggering-multiple-times-for-a-single-event
@@ -162,11 +168,11 @@ def doc_to_text(document_path, event, context):
         text = text.decode('utf-8', errors='ignore').strip()
     except CalledProcessError as e:
         if b'Rich Text Format' in e.output:
-            logger.debug('Antiword failed on possible Rich Text file <{}>.'.format(event['document_uri']))
+            logger.debug('Antiword failed on possible Rich Text file <{}>.'.format(document_uri))
             return rtf_to_text(document_path, event, context)
 
         elif b'"docx" file' in e.output or is_zipfile(document_path):
-            logger.debug('Antiword failed on possible docx file <{}>.'.format(event['document_uri']))
+            logger.debug('Antiword failed on possible docx file <{}>.'.format(document_uri))
             return docx_to_text(document_path, event, context)
 
         else:
@@ -208,7 +214,7 @@ def docx_to_text(document_path, event, context):
         return text
 
     except Exception:
-        logger.exception('Exception while parsing <{}>.'.format(event['document_uri']))
+        logger.exception('Exception while parsing <{}>.'.format(document_uri))
     #end try
 
     # Extract it from the XML
